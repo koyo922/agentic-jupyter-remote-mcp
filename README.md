@@ -1,6 +1,6 @@
 # Agentic Jupyter Remote (MCP)
 
-[![GitHub License](https://img.shields.io/github/license/koyo922/agentic-jupyter-remote-mcp)](https://opensource.org/licenses/MIT)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![MCP Protocol](https://img.shields.io/badge/Protocol-MCP-blue.svg)](https://modelcontextprotocol.io/)
 [![Node.js](https://img.shields.io/badge/Node.js-%3E%3D18-brightgreen.svg)](https://nodejs.org/)
 [![GitHub Issues](https://img.shields.io/github/issues/koyo922/agentic-jupyter-remote-mcp)](https://github.com/koyo922/agentic-jupyter-remote-mcp/issues)
@@ -58,7 +58,7 @@ When you insert, edit, or run cells, this server communicates with the forwarded
 
 ## 中文 (快速指南)
 
-这是一个专为**远端 Jupyter Server（如云端独立 JupyterLab 或专用容器环境）**打造的定制版 MCP 服务。它不但能让 AI 执行远端代码，还能把结果强制同步回你本地硬盘上的 `.ipynb` 文件，结合 IDE 插件实现远端环境的热刷新。
+这是一个专为 **远端 Jupyter Server**（如云端独立 JupyterLab 或专用容器环境）打造的定制版 MCP 服务。它不但能让 AI 执行远端代码，还能把结果强制同步回你本地硬盘上的 `.ipynb` 文件，结合 IDE 插件实现远端环境的热刷新。
 
 > **如果你只是在本地 VS Code/Cursor 里跑 Notebook，请务必使用我们的专属前端插件 [agentic-jupyter-mcp](https://marketplace.visualstudio.com/items?itemName=koyo922.agentic-jupyter-mcp)，体验会远比这个好得多！**
 
