@@ -1,7 +1,7 @@
 /**
  * Jupyter Notebook MCP Server for Antigravity IDE
  * 
- * BigQuant 的 Jupyter Server root_dir 与 notebook 文件路径不一致，
+ * Remote Jupyter Server root_dir 与 notebook 文件路径如果不一致，
  * 因此不使用 Jupyter Contents API，改为通过 Kernel 直接操作文件系统。
  *
  * Env vars:
@@ -19,7 +19,14 @@ import { randomUUID } from "crypto";
 import { writeFileSync, mkdirSync } from "fs";
 import { dirname, join } from "path";
 
-const BASE = process.env.JUPYTER_BASE_URL || "http://localhost:8765";
+// Parse --port from command line if provided
+let port = 8765;
+const portIndex = process.argv.indexOf('--port');
+if (portIndex > -1 && process.argv.length > portIndex + 1) {
+    port = parseInt(process.argv[portIndex + 1], 10) || 8765;
+}
+
+const BASE = process.env.JUPYTER_BASE_URL || `http://localhost:${port}`;
 const TOKEN = process.env.JUPYTER_TOKEN || "";
 const NB_ROOT = process.env.JUPYTER_NOTEBOOKS || "/home/aiuser/work";
 const LOCAL_ROOT = process.env.JUPYTER_LOCAL_ROOT || "";
