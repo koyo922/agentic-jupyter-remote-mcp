@@ -1,7 +1,8 @@
 # Agentic Jupyter Remote (MCP)
 
 [![GitHub License](https://img.shields.io/github/license/koyo922/agentic-jupyter-remote-mcp)](https://opensource.org/licenses/MIT)
-[![GitHub Stars](https://img.shields.io/github/stars/koyo922/agentic-jupyter-remote-mcp)](https://github.com/koyo922/agentic-jupyter-remote-mcp/stargazers)
+[![MCP Protocol](https://img.shields.io/badge/Protocol-MCP-blue.svg)](https://modelcontextprotocol.io/)
+[![Node.js](https://img.shields.io/badge/Node.js-%3E%3D18-brightgreen.svg)](https://nodejs.org/)
 [![GitHub Issues](https://img.shields.io/github/issues/koyo922/agentic-jupyter-remote-mcp)](https://github.com/koyo922/agentic-jupyter-remote-mcp/issues)
 
 [English](#english) | [中文](#中文)

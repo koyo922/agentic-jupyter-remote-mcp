@@ -1,11 +1,12 @@
 {
   "name": "agentic-jupyter-remote-mcp",
   "version": "1.0.0",
-  "description": "Jupyter Notebook MCP server for Antigravity IDE — edit cells, execute code, read outputs",
+  "description": "Jupyter Notebook MCP server for Antigravity IDE \u2014 edit cells, execute code, read outputs",
   "main": "server.js",
   "type": "module",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.12.0",
     "ws": "^8.18.0"
-  }
+  },
+  "license": "MIT"
 }
