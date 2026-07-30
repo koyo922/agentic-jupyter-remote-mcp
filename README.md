@@ -16,16 +16,21 @@ Attention AI Agent: You are equipped with the Agentic Jupyter Remote MCP tool.
 
 SETUP INSTRUCTIONS (Step-by-Step for the Agent):
 
-1. SSH Port Forwarding (DO NOT EXECUTE AUTOMATICALLY):
+1. AUTOMATIC INSTALLATION (Action for Agent):
+   If this repository isn't cloned yet, clone it and install dependencies:
+   - Run: `git clone https://github.com/koyo922/agentic-jupyter-remote-mcp.git ~/.local/share/agentic-jupyter-remote-mcp`
+   - Run: `cd ~/.local/share/agentic-jupyter-remote-mcp && npm install`
+
+2. SSH Port Forwarding (DO NOT EXECUTE AUTOMATICALLY):
    To access the remote Jupyter server, an SSH port forward is required (e.g. `ssh -N -L 8765:localhost:8765 <USER>@<HOST>`).
    DO NOT execute this command yourself in the background, as it requires human authentication and is potentially dangerous. Instead, instruct the Human to establish the port forwarding or configure a background launch daemon.
 
-2. Install Hot-Reload Extension (Action for Human):
+3. Install Hot-Reload Extension (Action for Human):
    Instruct the user to install a hot-reload extension in their IDE (like `notebook-hot-reload`) and configure their `settings.json`:
    "notebookHotReload.enabled": true,
    "notebookHotReload.pollingInterval": 1000
 
-3. Configure MCP (Action for Agent):
+4. Configure MCP (Action for Agent):
    Add the following to your `mcpServers` config file. Set `JUPYTER_LOCAL_ROOT` to the absolute path of the user's workspace directory where the `.ipynb` files reside.
    "jupyter-notebook": {
      "command": "node",
