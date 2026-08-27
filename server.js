@@ -17,14 +17,19 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { z } from "zod";
 import WebSocket from "ws";
 import { randomUUID } from "crypto";
-import { writeFileSync, mkdirSync } from "fs";
+import { writeFileSync, mkdirSync, readFileSync } from "fs";
 import { dirname } from "path";
 import {
   normalizeNotebookPath,
   remoteNotebookPath,
   resolveLocalMirrorPath,
+  sanitizeBaseUrl,
   selectExactSession,
 } from "./lib/core.js";
+
+const PRODUCT_VERSION = JSON.parse(
+  readFileSync(new URL('./package.json', import.meta.url), 'utf8')
+).version;
 
 // Parse --port from command line if provided
 let port = 8765;
@@ -233,7 +238,46 @@ del _nb, _nb_path, _json, _pathlib
 
 // ── MCP Server ───────────────────────────────────────────────────────
 
-const server = new McpServer({ name: "jupyter-notebook", version: "1.1.0" });
+const server = new McpServer({ name: "agentic-jupyter-remote", version: PRODUCT_VERSION });
+
+server.tool(
+  "jupyter_server_status",
+  "Check the configured standalone or remote Jupyter Server without reading or modifying a Notebook",
+  {},
+  async () => {
+    try {
+      const sessions = await getSessions();
+      return {
+        content: [{
+          type: "text",
+          text: JSON.stringify({
+            product: "agentic-jupyter-remote-mcp",
+            version: PRODUCT_VERSION,
+            status: "ready",
+            base_url: sanitizeBaseUrl(BASE),
+            notebook_root: NB_ROOT,
+            local_mirror_enabled: Boolean(LOCAL_ROOT),
+            session_count: sessions.length,
+          }, null, 2),
+        }],
+      };
+    } catch (error) {
+      return {
+        isError: true,
+        content: [{
+          type: "text",
+          text: JSON.stringify({
+            product: "agentic-jupyter-remote-mcp",
+            version: PRODUCT_VERSION,
+            status: "unreachable",
+            base_url: sanitizeBaseUrl(BASE),
+            error: error instanceof Error ? error.message : String(error),
+          }, null, 2),
+        }],
+      };
+    }
+  }
+);
 
 // 1) List cells
 server.tool(

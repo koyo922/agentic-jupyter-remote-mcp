@@ -1,0 +1,6 @@
+interface:
+  display_name: "Agentic Jupyter Remote"
+  short_description: "Operate notebooks on a remote Jupyter Server"
+  default_prompt: "Use $agentic-jupyter-remote to inspect and run this Notebook on its remote Jupyter Server."
+policy:
+  allow_implicit_invocation: true

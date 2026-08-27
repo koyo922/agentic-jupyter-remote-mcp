@@ -1,6 +1,6 @@
 # Agentic Jupyter Remote (MCP)
 
-[![npm version](https://img.shields.io/npm/v/agentic-jupyter-remote-mcp.svg)](https://www.npmjs.com/package/agentic-jupyter-remote-mcp)
+[![GitHub Release](https://img.shields.io/github/v/release/koyo922/agentic-jupyter-remote-mcp)](https://github.com/koyo922/agentic-jupyter-remote-mcp/releases/latest)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![MCP Protocol](https://img.shields.io/badge/Protocol-MCP-blue.svg)](https://modelcontextprotocol.io/)
 [![Node.js](https://img.shields.io/badge/Node.js-%3E%3D18-brightgreen.svg)](https://nodejs.org/)
@@ -22,19 +22,26 @@ An MCP server for AI agents that need to read, edit, and execute notebooks on a 
 
 A notebook file copied or synchronized onto a laptop is still a remote notebook when its real kernel lives on the Jupyter Server. File synchronization and kernel execution are separate responsibilities.
 
-### Install
+### Install the Agent Skill
 
-Node.js 18 or newer is required.
+The repository publishes a first-class `agentic-jupyter-remote` Skill as well as the MCP backend. Install it directly from GitHub:
 
 ```bash
-npx agentic-jupyter-remote-mcp@latest --port 8765
+python ~/.codex/skills/.system/skill-installer/scripts/install-skill-from-github.py \
+  --repo koyo922/agentic-jupyter-remote-mcp \
+  --path skills/agentic-jupyter-remote
 ```
 
-Or install it globally:
+The Skill contains the routing and safety workflow plus a version-locked MCP launcher. It becomes discoverable in a new Codex session after installation.
+
+### Install
+
+Node.js 18 or newer is required. The public backend is pinned to the matching GitHub Release:
 
 ```bash
-npm install --global agentic-jupyter-remote-mcp
-agentic-jupyter-remote-mcp --port 8765
+npx --yes \
+  --package github:koyo922/agentic-jupyter-remote-mcp#v1.2.0 \
+  agentic-jupyter-remote-mcp --port 8765
 ```
 
 ### MCP configuration
@@ -44,7 +51,7 @@ agentic-jupyter-remote-mcp --port 8765
   "mcpServers": {
     "agentic-jupyter-remote": {
       "command": "npx",
-      "args": ["-y", "agentic-jupyter-remote-mcp@latest", "--port", "8765"],
+      "args": ["--yes", "--package", "github:koyo922/agentic-jupyter-remote-mcp#v1.2.0", "agentic-jupyter-remote-mcp", "--port", "8765"],
       "env": {
         "JUPYTER_TOKEN": "<token>",
         "JUPYTER_NOTEBOOKS": "/home/aiuser/work"
@@ -60,6 +67,7 @@ If the Jupyter Server is remote, establish a secure tunnel or another authentica
 
 ### Tools
 
+- `jupyter_server_status`
 - `notebook_list_cells`
 - `notebook_get_cell`
 - `notebook_edit_cell`
@@ -98,12 +106,26 @@ This package owns remote Jupyter execution, not workspace synchronization. For a
 
 即使 `.ipynb` 已同步到笔记本电脑，只要真实 Kernel 仍在 Jupyter Server，它就属于远端场景。文件同步与 Kernel 执行是两个独立职责。
 
-### 安装与配置
+### 安装 Agent Skill
 
-需要 Node.js 18 或更高版本：
+本仓库同时正式发布 `agentic-jupyter-remote` Skill 与 MCP 执行后端。可以直接从 GitHub 安装：
 
 ```bash
-npx agentic-jupyter-remote-mcp@latest --port 8765
+python ~/.codex/skills/.system/skill-installer/scripts/install-skill-from-github.py \
+  --repo koyo922/agentic-jupyter-remote-mcp \
+  --path skills/agentic-jupyter-remote
+```
+
+Skill 提供本地/远端路由边界、安全操作流程和锁定版本的 MCP launcher；安装后会在新的 Codex 会话中被发现。开始操作前先调用 `jupyter_server_status`，确认远端 Server 为 `ready`。
+
+### 安装与配置
+
+需要 Node.js 18 或更高版本。公开后端锁定到与 Skill 匹配的 GitHub Release：
+
+```bash
+npx --yes \
+  --package github:koyo922/agentic-jupyter-remote-mcp#v1.2.0 \
+  agentic-jupyter-remote-mcp --port 8765
 ```
 
 MCP 配置示例：
@@ -113,7 +135,7 @@ MCP 配置示例：
   "mcpServers": {
     "agentic-jupyter-remote": {
       "command": "npx",
-      "args": ["-y", "agentic-jupyter-remote-mcp@latest", "--port", "8765"],
+      "args": ["--yes", "--package", "github:koyo922/agentic-jupyter-remote-mcp#v1.2.0", "agentic-jupyter-remote-mcp", "--port", "8765"],
       "env": {
         "JUPYTER_TOKEN": "<token>",
         "JUPYTER_NOTEBOOKS": "/home/aiuser/work"

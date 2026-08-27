@@ -16,4 +16,5 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: node --check server.js
+      - run: bash -n skills/agentic-jupyter-remote/scripts/launch.sh
       - run: npm pack --dry-run

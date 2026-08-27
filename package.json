@@ -1,6 +1,6 @@
 {
   "name": "agentic-jupyter-remote-mcp",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Control remote Jupyter Servers over HTTP and WebSocket from MCP clients",
   "main": "server.js",
   "type": "module",
@@ -12,7 +12,8 @@
     "lib",
     "README.md",
     "CHANGELOG.md",
-    "LICENSE"
+    "LICENSE",
+    "skills"
   ],
   "scripts": {
     "start": "node server.js",

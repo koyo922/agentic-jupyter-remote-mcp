@@ -7,6 +7,7 @@ import {
   normalizeNotebookPath,
   remoteNotebookPath,
   resolveLocalMirrorPath,
+  sanitizeBaseUrl,
   selectExactSession,
 } from '../lib/core.js';
 
@@ -15,6 +16,13 @@ test('normalizes safe notebook paths and rejects escapes', () => {
   assert.throws(() => normalizeNotebookPath('../secret.ipynb'), /escapes/);
   assert.throws(() => normalizeNotebookPath('/absolute.ipynb'), /relative/);
   assert.throws(() => normalizeNotebookPath('notes.txt'), /\.ipynb/);
+});
+
+test('sanitizes status URLs before exposing them to agents', () => {
+  assert.equal(
+    sanitizeBaseUrl('https://user:secret@example.test:8765/root?token=private#fragment'),
+    'https://example.test:8765/root'
+  );
 });
 
 test('builds remote and local paths under configured roots', () => {
