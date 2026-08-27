@@ -34,6 +34,8 @@ python ~/.codex/skills/.system/skill-installer/scripts/install-skill-from-github
 
 The Skill contains the routing and safety workflow plus a version-locked MCP launcher. It becomes discoverable in a new Codex session after installation.
 
+When registering the installed launcher as stdio MCP, use `/bin/bash` as `command` and the launcher's absolute path as the first `args` item. GitHub ZIP downloads do not preserve executable bits.
+
 ### Install
 
 Node.js 18 or newer is required. The public backend is pinned to the matching GitHub Release:
@@ -117,6 +119,8 @@ python ~/.codex/skills/.system/skill-installer/scripts/install-skill-from-github
 ```
 
 Skill 提供本地/远端路由边界、安全操作流程和锁定版本的 MCP launcher；安装后会在新的 Codex 会话中被发现。开始操作前先调用 `jupyter_server_status`，确认远端 Server 为 `ready`。
+
+把已安装 launcher 注册为 stdio MCP 时，`command` 使用 `/bin/bash`，`args` 的第一项填写 launcher 绝对路径。GitHub ZIP 下载不会保留 executable bit，因此不要把脚本本身直接当作 `command`。
 
 ### 安装与配置
 

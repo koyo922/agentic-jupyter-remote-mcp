@@ -17,7 +17,7 @@ The MCP backend requires Node.js 18 or newer and these environment variables:
 - `JUPYTER_NOTEBOOKS`: remote Notebook root, such as `/home/aiuser/work`.
 - `JUPYTER_BASE_URL`: Server URL, or pass `--port` to use `http://127.0.0.1:<port>`.
 
-Register [scripts/launch.sh](scripts/launch.sh) as a stdio MCP command. It launches the matching published backend version; do not substitute a local IDE bridge or a direct `.ipynb` file editor.
+Register `/bin/bash` as the stdio MCP command and pass the absolute path to [scripts/launch.sh](scripts/launch.sh) as its first argument. GitHub ZIP installation does not preserve executable bits, so do not register the script itself as the command. The launcher starts the matching published backend version; do not substitute a local IDE bridge or a direct `.ipynb` file editor.
 
 ## Operate
 

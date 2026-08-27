@@ -4,6 +4,7 @@
 
 - Publish a first-class `agentic-jupyter-remote` Skill for GitHub-based installation.
 - Add a version-locked Skill launcher for the matching remote MCP package.
+- Document the `/bin/bash <launcher>` entrypoint so GitHub ZIP installs work without executable bits.
 - Add `jupyter_server_status` for safe, non-Notebook health and session diagnostics.
 - Redact credentials, query parameters, and fragments from status URLs.
 - Read the MCP runtime version from package metadata.
