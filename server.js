@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 /**
  * Jupyter Notebook MCP Server for Antigravity IDE
  * 
@@ -17,7 +18,13 @@ import { z } from "zod";
 import WebSocket from "ws";
 import { randomUUID } from "crypto";
 import { writeFileSync, mkdirSync } from "fs";
-import { dirname, join } from "path";
+import { dirname } from "path";
+import {
+  normalizeNotebookPath,
+  remoteNotebookPath,
+  resolveLocalMirrorPath,
+  selectExactSession,
+} from "./lib/core.js";
 
 // Parse --port from command line if provided
 let port = 8765;
@@ -34,21 +41,22 @@ const LOCAL_ROOT = process.env.JUPYTER_LOCAL_ROOT || "";
 // ── kernel execution helper ──────────────────────────────────────────
 
 async function getSessions() {
-  const url = `${BASE}/api/sessions?token=${TOKEN}`;
+  const url = new URL("api/sessions", `${BASE.replace(/\/$/, "")}/`);
+  if (TOKEN) url.searchParams.set("token", TOKEN);
   const res = await fetch(url);
   if (!res.ok) throw new Error(`Sessions API ${res.status}`);
   return res.json();
 }
 
 async function getOrCreateSession(notebookPath) {
+  notebookPath = normalizeNotebookPath(notebookPath);
   const sessions = await getSessions();
-  const baseName = notebookPath.split("/").pop().replace(".ipynb", "");
-  let session = sessions.find(
-    (s) => s.path && s.path.includes(baseName)
-  );
+  let session = selectExactSession(sessions, notebookPath);
   if (session) return session;
 
-  session = await fetch(`${BASE}/api/sessions?token=${TOKEN}`, {
+  const url = new URL("api/sessions", `${BASE.replace(/\/$/, "")}/`);
+  if (TOKEN) url.searchParams.set("token", TOKEN);
+  session = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -63,16 +71,37 @@ async function getOrCreateSession(notebookPath) {
 
 function executeOnKernel(kernelId, code, timeoutMs = 30000) {
   return new Promise((resolve, reject) => {
-    const wsUrl = `${BASE.replace(/^http/, "ws")}/api/kernels/${kernelId}/channels?token=${TOKEN}`;
+    const wsUrl = new URL(`api/kernels/${encodeURIComponent(kernelId)}/channels`, `${BASE.replace(/^http/, "ws").replace(/\/$/, "")}/`);
+    if (TOKEN) wsUrl.searchParams.set("token", TOKEN);
     const ws = new WebSocket(wsUrl);
     const msgId = randomUUID();
     const sessionId = randomUUID();
     const outputs = [];
     let status = "unknown";
+    let executionCount = null;
+    let receivedShellReply = false;
+    let receivedIdle = false;
+    let settled = false;
+
+    const finish = () => {
+      if (!settled && receivedShellReply && receivedIdle) {
+        settled = true;
+        clearTimeout(timer);
+        ws.close();
+        resolve({ status, outputs, executionCount });
+      }
+    };
+
+    const fail = (error) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      ws.close();
+      reject(error);
+    };
 
     const timer = setTimeout(() => {
-      ws.close();
-      reject(new Error("Kernel execution timed out"));
+      fail(new Error(`Kernel execution timed out after ${timeoutMs} ms`));
     }, timeoutMs);
 
     ws.on("open", () => {
@@ -92,7 +121,13 @@ function executeOnKernel(kernelId, code, timeoutMs = 30000) {
     });
 
     ws.on("message", (raw) => {
-      const msg = JSON.parse(raw.toString());
+      let msg;
+      try {
+        msg = JSON.parse(raw.toString());
+      } catch (error) {
+        fail(new Error(`Invalid Jupyter WebSocket message: ${error.message}`));
+        return;
+      }
       if (msg.parent_header?.msg_id !== msgId) return;
       switch (msg.header.msg_type) {
         case "stream":
@@ -110,19 +145,29 @@ function executeOnKernel(kernelId, code, timeoutMs = 30000) {
           break;
         case "execute_reply":
           status = msg.content.status;
-          clearTimeout(timer);
-          ws.close();
-          resolve({ status, outputs });
+          executionCount = msg.content.execution_count ?? executionCount;
+          receivedShellReply = true;
+          finish();
+          break;
+        case "status":
+          if (msg.content.execution_state === "idle") {
+            receivedIdle = true;
+            finish();
+          }
           break;
       }
     });
 
-    ws.on("error", (err) => { clearTimeout(timer); reject(err); });
+    ws.on("error", fail);
+    ws.on("close", () => {
+      if (!settled) fail(new Error("Kernel WebSocket closed before execution completed"));
+    });
   });
 }
 
 /** Execute code on the kernel tied to a notebook path */
 async function runOnNotebook(notebookPath, code, timeoutMs = 30000) {
+  notebookPath = normalizeNotebookPath(notebookPath);
   const session = await getOrCreateSession(notebookPath);
   return executeOnKernel(session.kernel.id, code, timeoutMs);
 }
@@ -131,7 +176,7 @@ async function runOnNotebook(notebookPath, code, timeoutMs = 30000) {
 function formatOutputs(outputs) {
   return outputs.map((o) => {
     if (o.type === "stream") return o.text;
-    if (o.type === "error") return o.traceback.join("\n");
+    if (o.type === "error") return Array.isArray(o.traceback) ? o.traceback.join("\n") : `${o.ename}: ${o.evalue}`;
     if (o.data?.["text/plain"]) return o.data["text/plain"];
     return JSON.stringify(o.data);
   }).join("");
@@ -140,13 +185,17 @@ function formatOutputs(outputs) {
 /** Sync remote notebook file to local workspace */
 async function syncToLocal(notebookPath) {
   if (!LOCAL_ROOT) return;
-  const localPath = join(LOCAL_ROOT, notebookPath);
+  notebookPath = normalizeNotebookPath(notebookPath);
+  const localPath = resolveLocalMirrorPath(LOCAL_ROOT, notebookPath);
   // Read the remote file content via kernel
   const result = await runOnNotebook(notebookPath, `
 import pathlib as _p
 print(_p.Path(${JSON.stringify(`${NB_ROOT}/${notebookPath}`)}).read_text(encoding='utf-8'), end='')
 del _p
 `);
+  if (result.status !== "ok") {
+    throw new Error(`Remote notebook sync failed: ${formatOutputs(result.outputs)}`);
+  }
   const content = formatOutputs(result.outputs);
   if (content) {
     mkdirSync(dirname(localPath), { recursive: true });
@@ -154,9 +203,13 @@ del _p
   }
 }
 
-/** Run a Python snippet on the kernel that reads/writes the .ipynb via nbformat, then auto-sync to local */
-async function nbAction(notebookPath, pyCode, timeoutMs = 30000) {
-  const fullPath = `${NB_ROOT}/${notebookPath}`;
+/** Run a Python snippet against a notebook, writing it back only for mutating tools. */
+async function nbAction(notebookPath, pyCode, timeoutMs = 30000, writeBack = true) {
+  notebookPath = normalizeNotebookPath(notebookPath);
+  const fullPath = remoteNotebookPath(NB_ROOT, notebookPath);
+  const writeStatement = writeBack
+    ? "_nb_path.write_text(_json.dumps(_nb, ensure_ascii=False, indent=1), encoding='utf-8')"
+    : "";
   const wrappedCode = `
 import json as _json, pathlib as _pathlib
 
@@ -165,18 +218,22 @@ _nb = _json.loads(_nb_path.read_text(encoding='utf-8'))
 
 ${pyCode}
 
-_nb_path.write_text(_json.dumps(_nb, ensure_ascii=False, indent=1), encoding='utf-8')
+${writeStatement}
 del _nb, _nb_path, _json, _pathlib
 `;
   const result = await runOnNotebook(notebookPath, wrappedCode, timeoutMs);
-  // Auto-sync to local after every write
-  await syncToLocal(notebookPath).catch(() => {});
+  if (result.status !== "ok") {
+    throw new Error(`Remote notebook action failed: ${formatOutputs(result.outputs)}`);
+  }
+  if (writeBack) {
+    await syncToLocal(notebookPath);
+  }
   return result;
 }
 
 // ── MCP Server ───────────────────────────────────────────────────────
 
-const server = new McpServer({ name: "jupyter-notebook", version: "1.0.0" });
+const server = new McpServer({ name: "jupyter-notebook", version: "1.1.0" });
 
 // 1) List cells
 server.tool(
@@ -197,7 +254,7 @@ for _i, _c in enumerate(_nb['cells']):
     })
 print(_json.dumps(_cells_info, ensure_ascii=False, indent=2))
 `;
-    const result = await nbAction(path, code);
+    const result = await nbAction(path, code, 30000, false);
     return { content: [{ type: "text", text: formatOutputs(result.outputs) }] };
   }
 );
@@ -208,7 +265,7 @@ server.tool(
   "Get the full source and outputs of a specific cell by index",
   {
     path: z.string().describe("Notebook path"),
-    cell_index: z.number().int().describe("0-based cell index"),
+    cell_index: z.number().int().nonnegative().describe("0-based cell index"),
   },
   async ({ path, cell_index }) => {
     const code = `
@@ -222,7 +279,7 @@ print(_json.dumps({
     'outputs': _c.get('outputs', []),
 }, ensure_ascii=False, indent=2))
 `;
-    const result = await nbAction(path, code);
+    const result = await nbAction(path, code, 30000, false);
     return { content: [{ type: "text", text: formatOutputs(result.outputs) }] };
   }
 );
@@ -233,11 +290,11 @@ server.tool(
   "Replace the source code of a specific cell by index, then save the notebook",
   {
     path: z.string().describe("Notebook path"),
-    cell_index: z.number().int().describe("0-based cell index"),
+    cell_index: z.number().int().nonnegative().describe("0-based cell index"),
     new_source: z.string().describe("New source code for the cell"),
   },
   async ({ path, cell_index, new_source }) => {
-    const escapedSource = JSON.stringify(new_source);
+    const escapedSource = JSON.stringify(new_source.replace(/\n+$/, ""));
     const code = `
 _nb['cells'][${cell_index}]['source'] = ${escapedSource}
 _nb['cells'][${cell_index}]['outputs'] = []
@@ -255,12 +312,12 @@ server.tool(
   "Insert a new cell at a given position",
   {
     path: z.string().describe("Notebook path"),
-    position: z.number().int().describe("0-based position to insert at"),
+    position: z.number().int().nonnegative().describe("0-based position to insert at"),
     cell_type: z.enum(["code", "markdown"]).default("code"),
     source: z.string().describe("Cell source code or markdown"),
   },
   async ({ path, position, cell_type, source }) => {
-    const escapedSource = JSON.stringify(source);
+    const escapedSource = JSON.stringify(source.replace(/\n+$/, ""));
     const code = `
 _new_cell = {
     'cell_type': ${JSON.stringify(cell_type)},
@@ -282,7 +339,7 @@ server.tool(
   "Delete a cell by index",
   {
     path: z.string().describe("Notebook path"),
-    cell_index: z.number().int().describe("0-based cell index"),
+    cell_index: z.number().int().nonnegative().describe("0-based cell index"),
   },
   async ({ path, cell_index }) => {
     const code = `
@@ -300,8 +357,8 @@ server.tool(
   "Execute a cell on the remote Jupyter kernel, return output, and write outputs back to the .ipynb file",
   {
     path: z.string().describe("Notebook path"),
-    cell_index: z.number().int().describe("0-based cell index to execute"),
-    timeout_ms: z.number().int().default(30000).describe("Execution timeout in ms"),
+    cell_index: z.number().int().nonnegative().describe("0-based cell index to execute"),
+    timeout_ms: z.number().int().positive().max(600000).default(30000).describe("Execution timeout in ms"),
   },
   async ({ path, cell_index, timeout_ms }) => {
     // First, read cell source
@@ -310,10 +367,10 @@ _c = _nb['cells'][${cell_index}]
 _src = ''.join(_c.get('source', []) if isinstance(_c.get('source'), list) else [_c.get('source', '')])
 print(_src)
 `;
-    const readResult = await nbAction(path, readCode);
-    const cellSource = formatOutputs(readResult.outputs).trim();
+    const readResult = await nbAction(path, readCode, 30000, false);
+    const cellSource = formatOutputs(readResult.outputs);
 
-    if (!cellSource) throw new Error(`Cell ${cell_index} is empty`);
+    if (cellSource.trim().length === 0) throw new Error(`Cell ${cell_index} is empty`);
 
     // Execute on kernel
     const execResult = await runOnNotebook(path, cellSource, timeout_ms);
@@ -327,13 +384,14 @@ print(_src)
 
     const writeCode = `
 _nb['cells'][${cell_index}]['outputs'] = _json.loads(${JSON.stringify(JSON.stringify(nbOutputs))})
-_nb['cells'][${cell_index}]['execution_count'] = (_nb['cells'][${cell_index}].get('execution_count') or 0) + 1
+_nb['cells'][${cell_index}]['execution_count'] = ${JSON.stringify(execResult.executionCount)}
 print('Outputs written back.')
 `;
     await nbAction(path, writeCode);
 
     const text = formatOutputs(execResult.outputs);
     return {
+      isError: execResult.status !== "ok",
       content: [{ type: "text", text: `Status: ${execResult.status}\n\n${text || "(no output)"}` }],
     };
   }
@@ -346,12 +404,15 @@ server.tool(
   {
     path: z.string().describe("Notebook path (used to find the kernel session)"),
     code: z.string().describe("Python code to execute"),
-    timeout_ms: z.number().int().default(30000).describe("Execution timeout in ms"),
+    timeout_ms: z.number().int().positive().max(600000).default(30000).describe("Execution timeout in ms"),
   },
   async ({ path, code, timeout_ms }) => {
     const result = await runOnNotebook(path, code, timeout_ms);
     const text = formatOutputs(result.outputs);
-    return { content: [{ type: "text", text: `Status: ${result.status}\n\n${text || "(no output)"}` }] };
+    return {
+      isError: result.status !== "ok",
+      content: [{ type: "text", text: `Status: ${result.status}\n\n${text || "(no output)"}` }],
+    };
   }
 );
 

@@ -1,9 +1,9 @@
 # Agentic Jupyter Remote (MCP)
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+[![npm version](https://img.shields.io/npm/v/agentic-jupyter-remote-mcp.svg)](https://www.npmjs.com/package/agentic-jupyter-remote-mcp)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![MCP Protocol](https://img.shields.io/badge/Protocol-MCP-blue.svg)](https://modelcontextprotocol.io/)
 [![Node.js](https://img.shields.io/badge/Node.js-%3E%3D18-brightgreen.svg)](https://nodejs.org/)
-[![GitHub Issues](https://img.shields.io/github/issues/koyo922/agentic-jupyter-remote-mcp)](https://github.com/koyo922/agentic-jupyter-remote-mcp/issues)
 
 [English](#english) | [中文](#中文)
 
@@ -11,115 +11,131 @@
 
 ## English
 
-This is a specialized Model Context Protocol (MCP) server for controlling remote Jupyter Servers (like standalone JupyterLab instances or cloud remote environments) directly from your AI Agent.
+An MCP server for AI agents that need to read, edit, and execute notebooks on a standalone or remote **Jupyter Server**. It connects to Jupyter's HTTP Sessions API and WebSocket kernel channels; it does not use an IDE's local IPython kernel.
 
-> **Sister Project**: If you are trying to let your AI Agent control the Jupyter Notebook **running locally inside your VS Code / Cursor IDE**, you do NOT need this project! Please use our IDE-native plugin: **[agentic-jupyter-mcp](https://marketplace.visualstudio.com/items?itemName=koyo922.agentic-jupyter-mcp)**.
+### Choose the right product
 
-### Architecture Difference
-Unlike standard Jupyter MCPs that only execute in a backend kernel (making the AI's actions invisible to you), this project forces a **Sync-to-Local** architecture. It executes the code via WebSocket on the remote server, but immediately writes the updated Notebook state back to your local `.ipynb` file. When combined with a hot-reload extension in your IDE, you get a seamless "what you see is what you get" remote pairing experience.
+| Kernel location | Product | Execution backend |
+| --- | --- | --- |
+| Local Notebook opened and run by VS Code, Cursor, Windsurf, or Antigravity | [agentic-jupyter-mcp](https://github.com/koyo922/agentic-jupyter-mcp) | IDE Notebook API and the IDE-selected IPython kernel |
+| Standalone or remote Jupyter Server reachable by URL or SSH tunnel | **This package** | Jupyter HTTP Sessions API and WebSocket kernel channels |
 
-### 🤖 For AI Agents (Auto-Configuration Prompt)
-*Tip for Humans: You can just give the URL of this README to your AI Agent, or copy-paste this block. The AI will read it, run the CLI commands to install the server for you, and configure itself automatically!*
+A notebook file copied or synchronized onto a laptop is still a remote notebook when its real kernel lives on the Jupyter Server. File synchronization and kernel execution are separate responsibilities.
 
-```text
-Attention AI Agent: You are equipped with the Agentic Jupyter Remote MCP tool.
+### Install
 
-SETUP INSTRUCTIONS (Step-by-Step for the Agent):
+Node.js 18 or newer is required.
 
-1. AUTOMATIC INSTALLATION (Action for Agent):
-   If this repository isn't cloned yet, clone it and install dependencies:
-   - Run: `git clone https://github.com/koyo922/agentic-jupyter-remote-mcp.git ~/.local/share/agentic-jupyter-remote-mcp`
-   - Run: `cd ~/.local/share/agentic-jupyter-remote-mcp && npm install`
-
-2. SSH Port Forwarding (DO NOT EXECUTE AUTOMATICALLY):
-   To access the remote Jupyter server, an SSH port forward is required (e.g. `ssh -N -L <LOCAL_PORT>:localhost:<REMOTE_PORT> <USER>@<HOST>`).
-   DO NOT execute this command yourself in the background, as it requires human authentication and is potentially dangerous. Instead, instruct the Human to establish the port forwarding or configure a background launch daemon.
-
-3. Install Hot-Reload Extension (Action for Human):
-   Instruct the user to install a hot-reload extension in their IDE (like `notebook-hot-reload`) and configure their `settings.json`:
-   "notebookHotReload.enabled": true,
-   "notebookHotReload.pollingInterval": 1000
-
-4. Configure MCP (Action for Agent):
-   Add the following to your `mcpServers` config file. Set `JUPYTER_LOCAL_ROOT` to the absolute path of the user's workspace directory where the `.ipynb` files reside. The `--port` argument should match the `<LOCAL_PORT>` the user forwarded.
-   "jupyter-notebook": {
-     "command": "node",
-     "args": ["<PATH_TO_THIS_REPO>/server.js", "--port", "<LOCAL_PORT>"],
-     "env": {
-       "JUPYTER_LOCAL_ROOT": "<USER_WORKSPACE_ABSOLUTE_PATH>"
-     }
-   }
-
-USAGE INSTRUCTIONS:
-When you insert, edit, or run cells, this server communicates with the forwarded port via WebSocket and automatically syncs the output back to the local `.ipynb` file. The user will see the screen refresh automatically thanks to the hot-reload plugin.
+```bash
+npx agentic-jupyter-remote-mcp@latest --port 8765
 ```
+
+Or install it globally:
+
+```bash
+npm install --global agentic-jupyter-remote-mcp
+agentic-jupyter-remote-mcp --port 8765
+```
+
+### MCP configuration
+
+```json
+{
+  "mcpServers": {
+    "agentic-jupyter-remote": {
+      "command": "npx",
+      "args": ["-y", "agentic-jupyter-remote-mcp@latest", "--port", "8765"],
+      "env": {
+        "JUPYTER_TOKEN": "<token>",
+        "JUPYTER_NOTEBOOKS": "/home/aiuser/work"
+      }
+    }
+  }
+}
+```
+
+You may set `JUPYTER_BASE_URL` instead of `--port`, for example `http://127.0.0.1:8765`. Notebook tool paths are always relative to `JUPYTER_NOTEBOOKS`.
+
+If the Jupyter Server is remote, establish a secure tunnel or another authenticated network route outside this package. The package never creates SSH credentials or tunnels itself.
+
+### Tools
+
+- `notebook_list_cells`
+- `notebook_get_cell`
+- `notebook_edit_cell`
+- `notebook_insert_cell`
+- `notebook_delete_cell`
+- `notebook_run_cell`
+- `notebook_run_code`
+
+Read tools do not rewrite the notebook. Mutating tools save on the remote filesystem, and run tools execute in the Jupyter kernel session associated with the exact notebook path.
+
+### File synchronization
+
+This package owns remote Jupyter execution, not workspace synchronization. For a mirrored local workspace, use a dedicated synchronization tool such as Mutagen, rsync, or your platform's native sync mechanism.
+
+`JUPYTER_LOCAL_ROOT` remains available as an explicit compatibility option for copying a remote notebook back to one local directory after mutations. Leave it unset when an external synchronizer is active; do not enable two writers for the same mirror.
+
+### Security
+
+- Bind forwarded ports to loopback unless remote access is intentionally secured.
+- Keep `JUPYTER_TOKEN` in the MCP client's secret environment, not in Git.
+- Tool paths cannot be absolute and cannot escape `JUPYTER_NOTEBOOKS`.
+- Local compatibility mirroring cannot escape `JUPYTER_LOCAL_ROOT`.
 
 ---
 
-## 中文 (快速指南)
+## 中文
 
-这是一个专为 **远端 Jupyter Server**（如云端独立 JupyterLab 或专用容器环境）打造的定制版 MCP 服务。它不但能让 AI 执行远端代码，还能把结果强制同步回你本地硬盘上的 `.ipynb` 文件，结合 IDE 插件实现远端环境的热刷新。
+这是一个面向独立或远端 **Jupyter Server** 的 MCP 服务。它通过 Jupyter HTTP Sessions API 与 WebSocket Kernel Channels 读取、编辑和执行 Notebook；它不使用 IDE 里的本地 IPython Kernel。
 
-> **如果你只是在本地 VS Code/Cursor 里跑 Notebook，请务必使用我们的专属前端插件 [agentic-jupyter-mcp](https://marketplace.visualstudio.com/items?itemName=koyo922.agentic-jupyter-mcp)，体验会远比这个好得多！**
+### 两种产品必须分开
 
-### 🤖 专给 AI Agent 看的配置指令 (全自动)
-*小贴士：你不需要自己动手！直接把当前这个网页的 URL 发给你的 AI，或者把下面这段英文复制给它。AI 读完后会直接在后台帮你拉取代码、安装依赖，并引导你完成端口转发的认证环节。*
+| Kernel 在哪里 | 应使用的产品 | 实际执行后端 |
+| --- | --- | --- |
+| Notebook 在 VS Code、Cursor、Windsurf 或 Antigravity 中打开并由 IDE 运行 | [agentic-jupyter-mcp](https://github.com/koyo922/agentic-jupyter-mcp) | IDE Notebook API 与 IDE 当前选择的 IPython Kernel |
+| 可通过 URL 或 SSH 隧道访问的独立/远端 Jupyter Server | **本包** | Jupyter HTTP Sessions API 与 WebSocket Kernel Channels |
 
-```text
-Attention AI Agent: You are equipped with the Agentic Jupyter Remote MCP tool.
+即使 `.ipynb` 已同步到笔记本电脑，只要真实 Kernel 仍在 Jupyter Server，它就属于远端场景。文件同步与 Kernel 执行是两个独立职责。
 
-SETUP INSTRUCTIONS (Step-by-Step for the Agent):
+### 安装与配置
 
-1. AUTOMATIC INSTALLATION (Action for Agent):
-   If this repository isn't cloned yet, clone it and install dependencies:
-   - Run: `git clone https://github.com/koyo922/agentic-jupyter-remote-mcp.git ~/.local/share/agentic-jupyter-remote-mcp`
-   - Run: `cd ~/.local/share/agentic-jupyter-remote-mcp && npm install`
+需要 Node.js 18 或更高版本：
 
-2. SSH Port Forwarding (DO NOT EXECUTE AUTOMATICALLY):
-   To access the remote Jupyter server, an SSH port forward is required (e.g. `ssh -N -L <LOCAL_PORT>:localhost:<REMOTE_PORT> <USER>@<HOST>`).
-   DO NOT execute this command yourself in the background, as it requires human authentication and is potentially dangerous. Instead, instruct the Human to establish the port forwarding or configure a background launch daemon.
-
-3. Install Hot-Reload Extension (Action for Human):
-   Instruct the user to install a hot-reload extension in their IDE (like `notebook-hot-reload`) and configure their `settings.json`:
-   "notebookHotReload.enabled": true,
-   "notebookHotReload.pollingInterval": 1000
-
-4. Configure MCP (Action for Agent):
-   Add the following to your `mcpServers` config file. Set `JUPYTER_LOCAL_ROOT` to the absolute path of the user's workspace directory where the `.ipynb` files reside. The `--port` argument should match the `<LOCAL_PORT>` the user forwarded.
-   "jupyter-notebook": {
-     "command": "node",
-     "args": ["<PATH_TO_THIS_REPO>/server.js", "--port", "<LOCAL_PORT>"],
-     "env": {
-       "JUPYTER_LOCAL_ROOT": "<USER_WORKSPACE_ABSOLUTE_PATH>"
-     }
-   }
-
-USAGE INSTRUCTIONS:
-When you insert, edit, or run cells, this server communicates with the forwarded port via WebSocket and automatically syncs the output back to the local `.ipynb` file. The user will see the screen refresh automatically thanks to the hot-reload plugin.
+```bash
+npx agentic-jupyter-remote-mcp@latest --port 8765
 ```
 
-### 原理与手动步骤 (给人类看的备份)
+MCP 配置示例：
 
-1. **底层通信（SSH 端口转发）**
-   要让这个工具生效，你必须先打通本地到远端 Jupyter 服务端口。
-   在终端执行：`ssh -N -L <本地端口>:localhost:<远端端口> user@remote_host`。由于这个操作涉及密码或安全认证，请**人工手动执行**。如果断网频繁，建议把它写进 macOS 的 `LaunchAgents` 守护进程里自动保活。
+```json
+{
+  "mcpServers": {
+    "agentic-jupyter-remote": {
+      "command": "npx",
+      "args": ["-y", "agentic-jupyter-remote-mcp@latest", "--port", "8765"],
+      "env": {
+        "JUPYTER_TOKEN": "<token>",
+        "JUPYTER_NOTEBOOKS": "/home/aiuser/work"
+      }
+    }
+  }
+}
+```
 
-2. **打通本地视图实时刷新 (Hot-Reload)**
-   当这个 MCP 帮你执行完远端代码并写回本地 `.ipynb` 后，VS Code 默认是不会刷新界面的。
-   你必须安装第三方插件（如 `notebook-hot-reload`）并在 `.vscode/settings.json` 中配置：
-   ```json
-   "notebookHotReload.enabled": true,
-   "notebookHotReload.pollingInterval": 1000
-   ```
+也可以通过 `JUPYTER_BASE_URL` 指定完整地址。所有 Notebook 工具的 `path` 都必须相对于 `JUPYTER_NOTEBOOKS`。
 
-3. **配置 MCP 并启动**
-   下载本仓库后，配置你的 AI Agent（如 Claude 或 Cursor）：
-   ```json
-   "jupyter-notebook": {
-     "command": "node",
-     "args": ["<本仓库所在路径>/server.js", "--port", "<你转发的本地端口>"],
-     "env": {
-       "JUPYTER_LOCAL_ROOT": "<你本地工程代码的绝对路径>"
-     }
-   }
-   ```
+远端网络连接由外部的 SSH 隧道或其他受认证链路负责；本包不会创建 SSH 凭据或自行启动隧道。
+
+### 文件同步边界
+
+本包只负责远端 Jupyter 执行，不负责工作区同步。本地镜像应交给 Mutagen、rsync 或平台原生同步机制。
+
+`JUPYTER_LOCAL_ROOT` 仅作为显式兼容选项保留，用于在修改后把远端 Notebook 复制到一个本地目录。已经启用外部同步时应保持它为空，避免同一镜像出现两个写入者。
+
+### 安全约束
+
+- 转发端口默认只绑定 loopback，除非远端访问已另行加固。
+- `JUPYTER_TOKEN` 只放在 MCP 客户端的私密环境中，不写入 Git。
+- 工具路径不能是绝对路径，也不能越出 `JUPYTER_NOTEBOOKS`。
+- 本地兼容镜像不能越出 `JUPYTER_LOCAL_ROOT`。

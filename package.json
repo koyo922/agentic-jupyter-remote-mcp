@@ -1,9 +1,41 @@
 {
   "name": "agentic-jupyter-remote-mcp",
-  "version": "1.0.0",
-  "description": "Jupyter Notebook MCP server for Antigravity IDE \u2014 edit cells, execute code, read outputs",
+  "version": "1.1.0",
+  "description": "Control remote Jupyter Servers over HTTP and WebSocket from MCP clients",
   "main": "server.js",
   "type": "module",
+  "bin": {
+    "agentic-jupyter-remote-mcp": "server.js"
+  },
+  "files": [
+    "server.js",
+    "lib",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test test/*.test.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/koyo922/agentic-jupyter-remote-mcp.git"
+  },
+  "bugs": {
+    "url": "https://github.com/koyo922/agentic-jupyter-remote-mcp/issues"
+  },
+  "homepage": "https://github.com/koyo922/agentic-jupyter-remote-mcp#readme",
+  "keywords": [
+    "mcp",
+    "jupyter",
+    "jupyter-server",
+    "notebook",
+    "ai-agent"
+  ],
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.12.0",
     "ws": "^8.18.0"
