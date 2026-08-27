@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.2.1 - 2026-08-27
+
+- Use the broadly available `python3` command in GitHub Skill installation examples.
+- Pin the public Skill launcher and MCP configuration examples to the corrected `v1.2.1` release.
+
 ## 1.2.0 - 2026-08-27
 
 - Publish a first-class `agentic-jupyter-remote` Skill for GitHub-based installation.

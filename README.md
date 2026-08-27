@@ -27,7 +27,7 @@ A notebook file copied or synchronized onto a laptop is still a remote notebook 
 The repository publishes a first-class `agentic-jupyter-remote` Skill as well as the MCP backend. Install it directly from GitHub:
 
 ```bash
-python ~/.codex/skills/.system/skill-installer/scripts/install-skill-from-github.py \
+python3 ~/.codex/skills/.system/skill-installer/scripts/install-skill-from-github.py \
   --repo koyo922/agentic-jupyter-remote-mcp \
   --path skills/agentic-jupyter-remote
 ```
@@ -42,7 +42,7 @@ Node.js 18 or newer is required. The public backend is pinned to the matching Gi
 
 ```bash
 npx --yes \
-  --package github:koyo922/agentic-jupyter-remote-mcp#v1.2.0 \
+  --package github:koyo922/agentic-jupyter-remote-mcp#v1.2.1 \
   agentic-jupyter-remote-mcp --port 8765
 ```
 
@@ -53,7 +53,7 @@ npx --yes \
   "mcpServers": {
     "agentic-jupyter-remote": {
       "command": "npx",
-      "args": ["--yes", "--package", "github:koyo922/agentic-jupyter-remote-mcp#v1.2.0", "agentic-jupyter-remote-mcp", "--port", "8765"],
+      "args": ["--yes", "--package", "github:koyo922/agentic-jupyter-remote-mcp#v1.2.1", "agentic-jupyter-remote-mcp", "--port", "8765"],
       "env": {
         "JUPYTER_TOKEN": "<token>",
         "JUPYTER_NOTEBOOKS": "/home/aiuser/work"
@@ -113,7 +113,7 @@ This package owns remote Jupyter execution, not workspace synchronization. For a
 本仓库同时正式发布 `agentic-jupyter-remote` Skill 与 MCP 执行后端。可以直接从 GitHub 安装：
 
 ```bash
-python ~/.codex/skills/.system/skill-installer/scripts/install-skill-from-github.py \
+python3 ~/.codex/skills/.system/skill-installer/scripts/install-skill-from-github.py \
   --repo koyo922/agentic-jupyter-remote-mcp \
   --path skills/agentic-jupyter-remote
 ```
@@ -128,7 +128,7 @@ Skill 提供本地/远端路由边界、安全操作流程和锁定版本的 MCP
 
 ```bash
 npx --yes \
-  --package github:koyo922/agentic-jupyter-remote-mcp#v1.2.0 \
+  --package github:koyo922/agentic-jupyter-remote-mcp#v1.2.1 \
   agentic-jupyter-remote-mcp --port 8765
 ```
 
@@ -139,7 +139,7 @@ MCP 配置示例：
   "mcpServers": {
     "agentic-jupyter-remote": {
       "command": "npx",
-      "args": ["--yes", "--package", "github:koyo922/agentic-jupyter-remote-mcp#v1.2.0", "agentic-jupyter-remote-mcp", "--port", "8765"],
+      "args": ["--yes", "--package", "github:koyo922/agentic-jupyter-remote-mcp#v1.2.1", "agentic-jupyter-remote-mcp", "--port", "8765"],
       "env": {
         "JUPYTER_TOKEN": "<token>",
         "JUPYTER_NOTEBOOKS": "/home/aiuser/work"
